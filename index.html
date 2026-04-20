@@ -262,11 +262,12 @@ function renderExcelModal(){
   const tsv = [header,...rows].map(r=>r.join("\t")).join("\n");
   return `<div class="overlay">
     <div class="modal">
-      <h3>📊 Excelへの貼り付け</h3>
-      <p style="font-size:13px;color:#888;margin-bottom:12px">①コピー → ②Excelを開く → ③セルA1選択 → ④ Ctrl+V</p>
+      <h3>📊 Excelデータ出力</h3>
+      <p style="font-size:13px;color:#888;margin-bottom:12px">①ダウンロード または ②コピー → Excelのセルに貼り付け</p>
       <textarea class="excel-ta" id="excel-ta" readonly>${esc(tsv)}</textarea>
       <div class="modal-btns" style="margin-top:12px">
-        <button class="btn-submit" id="excel-copy" style="flex:2">${state.copied?"✅ コピーしました！":"コピーする"}</button>
+        <button class="btn-submit btn-green" id="excel-dl" style="flex:2;background:#1a6e2e">⬇ Excelダウンロード</button>
+        <button class="btn-submit" id="excel-copy" style="flex:2">${state.copied?"✅ コピー済！":"📋 コピー"}</button>
         <button class="btn-cancel" id="excel-close" style="flex:1">閉じる</button>
       </div>
     </div>
@@ -315,6 +316,18 @@ function bindAll(){
   });
 
   // excel modal
+  document.getElementById("excel-dl")?.addEventListener("click",()=>{
+    const header = ["画像URL","URL","コンテンツ名","タイトル"];
+    const rows = state.contents.map(c=>[c.imgUrl||c.img||"",c.url||"",c.contentName||"",c.title||""]);
+    const csv = [header,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
+    const bom = "\uFEFF";
+    const blob = new Blob([bom+csv],{type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "FINE_contents.csv";
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  });
   document.getElementById("excel-close")?.addEventListener("click",()=>setState({showExcel:false}));
   document.getElementById("excel-copy")?.addEventListener("click",()=>{
     const ta = document.getElementById("excel-ta");
