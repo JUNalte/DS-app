@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FINE コンテンツ管理</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;min-height:100vh}
+  .header{background:#222;color:#fff;height:56px;display:flex;align-items:center;padding:0 1.5rem;gap:12px}
+  .header-title{font-weight:800;font-size:17px;letter-spacing:1px}
+  .spacer{flex:1}
+  .tab-btn{padding:6px 16px;border-radius:20px;border:none;background:transparent;color:#aaa;cursor:pointer;font-size:13px;font-weight:600}
+  .tab-btn.active{background:#fff;color:#222}
+  .api-btn{padding:6px 12px;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:600;color:#fff}
+  .main{max-width:1000px;margin:0 auto;padding:1.5rem 1rem}
+  .toolbar{display:flex;align-items:center;margin-bottom:1.2rem;gap:10px}
+  .toolbar h2{font-size:18px;color:#222}
+  .btn{padding:9px 20px;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600}
+  .btn-dark{background:#222;color:#fff}
+  .btn-green{background:#1a6e2e;color:#fff}
+  .btn-red{background:#e53;color:#fff}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+  .card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);display:flex;flex-direction:column}
+  .card-img{height:180px;background:#f0f0f0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .card-img img{width:100%;height:100%;object-fit:cover}
+  .card-body{padding:14px;flex:1;display:flex;flex-direction:column;gap:4px}
+  .card-cat{font-size:11px;color:#999;font-weight:500;text-transform:uppercase;letter-spacing:1px}
+  .card-title{font-size:15px;font-weight:700;color:#222;line-height:1.3}
+  .card-url{font-size:12px;color:#555;text-decoration:none;word-break:break-all;margin-top:2px}
+  .card-date{font-size:11px;color:#bbb;margin-top:auto;padding-top:8px}
+  .card-del{margin:0 14px 14px;padding:7px;border-radius:8px;border:1.5px solid #fcc;background:#fff5f5;color:#e53;cursor:pointer;font-size:13px}
+  .empty{text-align:center;padding:4rem;color:#bbb}
+  .empty-icon{font-size:48px;margin-bottom:12px}
+  /* モーダル */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100}
+  .modal{background:#fff;border-radius:16px;padding:2rem;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto}
+  .modal h3{font-size:18px;margin-bottom:1.2rem}
+  .drop-area{border:2px dashed #ccc;border-radius:12px;padding:1.5rem;text-align:center;margin-bottom:12px;min-height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;outline:none;background:#fafafa;transition:all .2s}
+  .drop-area:focus,.drop-area.drag{border-color:#666;background:#f9f9f9}
+  .drop-area img{max-height:120px;max-width:100%;border-radius:8px;object-fit:contain}
+  .drop-icon{font-size:28px}
+  .drop-text{color:#888;font-size:14px}
+  .drop-sub{color:#bbb;font-size:12px}
+  label.field{font-size:13px;color:#555;display:block;margin-bottom:4px}
+  .field-wrap{margin-bottom:12px}
+  input.input{width:100%;padding:9px 12px;border-radius:8px;border:1.5px solid #ddd;font-size:14px;outline:none}
+  input.input:focus{border-color:#999}
+  .preview-url{background:#f5f5f5;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#555;word-break:break-all}
+  .preview-url span{color:#999;display:block;margin-bottom:2px}
+  .error-box{background:#fff0f0;border:1px solid #fcc;border-radius:8px;padding:8px 12px;font-size:13px;color:#e53;margin-bottom:12px}
+  .warn-box{background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#7a5c00}
+  .modal-btns{display:flex;gap:10px;margin-top:16px}
+  .modal-btns button{flex:1;padding:10px;border-radius:8px;font-size:14px;cursor:pointer}
+  .btn-cancel{border:1.5px solid #ddd;background:#fff;color:#333}
+  .btn-submit{border:none;background:#222;color:#fff;font-weight:600}
+  .btn-submit:disabled{background:#999;cursor:not-allowed}
+  .uploading-text{color:#888;font-size:13px;text-align:center;margin-top:8px}
+  /* パスワード画面 */
+  .pw-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f5f5f5}
+  .pw-box{background:#fff;padding:2.5rem 2rem;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.06);min-width:320px;text-align:center}
+  .pw-icon{font-size:32px;margin-bottom:8px}
+  .pw-box h2{font-size:20px;color:#222;margin-bottom:1.5rem}
+  /* Excel modal */
+  .excel-ta{width:100%;height:160px;font-size:11px;font-family:monospace;border:1.5px solid #ddd;border-radius:8px;padding:8px;resize:none;color:#333}
+  /* 確認 */
+  .confirm-modal{background:#fff;border-radius:14px;padding:2rem;width:300px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+  .confirm-icon{font-size:32px;margin-bottom:8px}
+  a{color:#555}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const PASSWORD = "FINE";
+const STORAGE_KEY = "fine_contents";
+const API_KEY_STORAGE = "fine_cloudinary";
+const EXPIRATION = 2592000;
+
+// --- Storage ---
+function loadContents(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]"); }catch{ return []; } }
+function saveContents(d){ localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+function loadApiKey(){ return localStorage.getItem(API_KEY_STORAGE)||""; }
+function saveApiKey(k){ localStorage.setItem(API_KEY_STORAGE, k); }
+
+function transformUrl(u){
+  if(!u) return u;
+  let r = u.replace(/_flag=1&p_/g,"_flag=0&p_");
+  if(!r.endsWith("&utm_source=pinterest&utm_medium=social")) r+="&utm_source=pinterest&utm_medium=social";
+  return r;
+}
+
+async function uploadToCloudinary(apiKey, dataOrUrl, isUrl){
+  const [cloudName, uploadPreset] = (apiKey||"").split("|");
+  if(!cloudName||!uploadPreset) throw new Error("設定形式が正しくありません。「クラウド名|プリセット名」");
+  const fd = new FormData();
+  fd.append("upload_preset", uploadPreset);
+  fd.append("file", dataOrUrl);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,{method:"POST",body:fd});
+  const json = await res.json();
+  if(json.secure_url) return json.secure_url;
+  throw new Error(json.error?.message||"アップロード失敗");
+}
+
+// --- State ---
+let state = {
+  auth: false,
+  view: "manage",
+  contents: loadContents(),
+  apiKey: loadApiKey(),
+  showAdd: false,
+  showApi: false,
+  showExcel: false,
+  confirmId: null,
+  copied: false,
+};
+
+function setState(patch){ Object.assign(state, patch); render(); }
+
+// --- Render ---
+function render(){
+  const app = document.getElementById("app");
+  if(!state.auth){ app.innerHTML = renderPwScreen(); bindPw(); return; }
+  app.innerHTML = `
+    ${renderHeader()}
+    <div class="main">
+      ${state.view==="manage" ? renderManage() : renderPublic()}
+    </div>
+    ${state.showAdd ? renderAddModal() : ""}
+    ${state.showApi ? renderApiModal() : ""}
+    ${state.showExcel ? renderExcelModal() : ""}
+    ${state.confirmId ? renderConfirm() : ""}
+  `;
+  bindAll();
+}
+
+function renderPwScreen(){
+  return `<div class="pw-screen"><div class="pw-box">
+    <div class="pw-icon">🔒</div>
+    <h2>パスワードを入力</h2>
+    <input class="input" id="pw-input" type="password" placeholder="Password" style="margin-bottom:12px">
+    <div id="pw-err" style="color:#e53;font-size:13px;margin-bottom:8px;display:none">パスワードが違います</div>
+    <button class="btn btn-dark" style="width:100%" id="pw-btn">ログイン</button>
+  </div></div>`;
+}
+
+function bindPw(){
+  const btn = document.getElementById("pw-btn");
+  const inp = document.getElementById("pw-input");
+  const err = document.getElementById("pw-err");
+  const check = ()=>{
+    if(inp.value===PASSWORD){ setState({auth:true}); }
+    else{ err.style.display="block"; setTimeout(()=>err.style.display="none",1500); }
+  };
+  btn.onclick = check;
+  inp.onkeydown = e=>e.key==="Enter"&&check();
+  inp.focus();
+}
+
+function renderHeader(){
+  const apiOk = !!state.apiKey;
+  return `<div class="header">
+    <span class="header-title">FINE</span>
+    <span class="spacer"></span>
+    <button class="tab-btn ${state.view==="manage"?"active":""}" id="tab-manage">管理</button>
+    <button class="tab-btn ${state.view==="public"?"active":""}" id="tab-public">公開ページ</button>
+    <button class="api-btn" id="api-btn" style="background:${apiOk?"#1a6e2e":"#e53"}">${apiOk?"🔑 API設定済":"⚙️ APIキー未設定"}</button>
+  </div>`;
+}
+
+function renderManage(){
+  const noKey = !state.apiKey;
+  return `
+    <div class="toolbar">
+      <h2>コンテンツ管理</h2>
+      <span class="spacer"></span>
+      <button class="btn btn-green" id="excel-btn">📋 Excel用コピー</button>
+      <button class="btn btn-dark" id="add-btn">＋ 新規登録</button>
+    </div>
+    ${noKey?`<div class="warn-box">⚠️ Cloudinary APIキーが未設定です。右上の「⚙️ APIキー未設定」から設定してください。</div>`:""}
+    ${state.contents.length===0
+      ? `<div class="empty"><div class="empty-icon">📭</div><div>まだコンテンツがありません。</div></div>`
+      : `<div class="grid">${state.contents.map(c=>renderCard(c,true)).join("")}</div>`}
+  `;
+}
+
+function renderPublic(){
+  return `
+    <div class="toolbar"><h2>公開ページ</h2></div>
+    ${state.contents.length===0
+      ? `<div class="empty"><div class="empty-icon">📂</div><div>コンテンツがありません。</div></div>`
+      : `<div class="grid">${state.contents.map(c=>renderCard(c,false)).join("")}</div>`}
+  `;
+}
+
+function renderCard(c, showDel){
+  return `<div class="card">
+    <div class="card-img">${c.img?`<img src="${c.img}" onerror="this.style.display='none'" alt="">`:`<span style="font-size:36px">🖼️</span>`}</div>
+    <div class="card-body">
+      <div class="card-cat">${esc(c.contentName)}</div>
+      <div class="card-title">${esc(c.title)}</div>
+      ${c.url?`<a class="card-url" href="${esc(c.url)}" target="_blank">🔗 ${esc(c.url.length>40?c.url.slice(0,40)+"…":c.url)}</a>`:""}
+      <div class="card-date">${esc(c.createdAt)}</div>
+    </div>
+    ${showDel?`<button class="card-del" data-id="${c.id}">削除</button>`:""}
+  </div>`;
+}
+
+function renderAddModal(){
+  return `<div class="overlay" id="add-overlay">
+    <div class="modal">
+      <h3>コンテンツを登録</h3>
+      <div class="drop-area" id="drop-area" tabindex="0">
+        <div id="drop-inner">
+          <div class="drop-icon">📋</div>
+          <div class="drop-text">ここをクリックして Ctrl+V でペースト</div>
+          <div class="drop-sub">画像・画像URL・D&amp;D 対応</div>
+        </div>
+      </div>
+      <div class="field-wrap">
+        <label class="field">画像URL <span style="color:#bbb;font-weight:400">(URLペースト時は自動入力)</span></label>
+        <input class="input" id="img-url-input" placeholder="https://example.com/image.jpg">
+      </div>
+      <div class="field-wrap"><label class="field">コンテンツ名 *</label><input class="input" id="content-name" placeholder="例：商品A"></div>
+      <div class="field-wrap"><label class="field">タイトル *</label><input class="input" id="content-title" placeholder="例：夏の新作コレクション"></div>
+      <div class="field-wrap"><label class="field">URL</label><input class="input" id="content-url" placeholder="https://example.com"></div>
+      <div id="url-preview" style="display:none" class="preview-url"><span>▶ 変換後URL</span><span id="url-preview-text"></span></div>
+      <div id="upload-err" style="display:none" class="error-box"></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" id="add-cancel">キャンセル</button>
+        <button class="btn-submit" id="add-submit">登録する</button>
+      </div>
+      <div id="uploading" style="display:none" class="uploading-text">⏳ Cloudinaryにアップロード中...</div>
+    </div>
+  </div>`;
+}
+
+function renderApiModal(){
+  return `<div class="overlay" id="api-overlay">
+    <div class="modal" style="max-width:440px">
+      <h3>☁️ Cloudinary 設定</h3>
+      <p style="font-size:13px;color:#666;margin-bottom:12px;line-height:1.7">
+        1. <a href="https://cloudinary.com/users/register/free" target="_blank">cloudinary.com</a> で無料登録<br>
+        2. ダッシュボードの <strong>Cloud name</strong> をコピー<br>
+        3. Settings → Upload → Upload Presets → ml_default を <strong>Unsigned</strong> に変更<br>
+        4. 下記に <code>クラウド名|ml_default</code> の形式で入力
+      </p>
+      <input class="input" id="api-input" value="${esc(state.apiKey)}" placeholder="例: daxyrmozl|ml_default" style="margin-bottom:16px">
+      <div class="modal-btns">
+        <button class="btn-cancel" id="api-cancel">キャンセル</button>
+        <button class="btn-submit" id="api-save">保存</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderExcelModal(){
+  const header = ["画像URL","URL","コンテンツ名","タイトル"];
+  const rows = state.contents.map(c=>[c.imgUrl||c.img||"",c.url||"",c.contentName||"",c.title||""]);
+  const tsv = [header,...rows].map(r=>r.join("\t")).join("\n");
+  return `<div class="overlay">
+    <div class="modal">
+      <h3>📊 Excelへの貼り付け</h3>
+      <p style="font-size:13px;color:#888;margin-bottom:12px">①コピー → ②Excelを開く → ③セルA1選択 → ④ Ctrl+V</p>
+      <textarea class="excel-ta" id="excel-ta" readonly>${esc(tsv)}</textarea>
+      <div class="modal-btns" style="margin-top:12px">
+        <button class="btn-submit" id="excel-copy" style="flex:2">${state.copied?"✅ コピーしました！":"コピーする"}</button>
+        <button class="btn-cancel" id="excel-close" style="flex:1">閉じる</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderConfirm(){
+  return `<div class="overlay">
+    <div class="confirm-modal">
+      <div class="confirm-icon">🗑️</div>
+      <p style="margin:0 0 1.5rem;font-size:15px;color:#333">このコンテンツを削除しますか？</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn-cancel" style="flex:1;padding:10px;border-radius:8px;cursor:pointer" id="conf-cancel">キャンセル</button>
+        <button class="btn-red btn" style="flex:1" id="conf-ok">削除</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+// --- Bind ---
+let imgPreview = "";
+
+function bindAll(){
+  // header
+  document.getElementById("tab-manage")?.addEventListener("click",()=>setState({view:"manage"}));
+  document.getElementById("tab-public")?.addEventListener("click",()=>setState({view:"public"}));
+  document.getElementById("api-btn")?.addEventListener("click",()=>setState({showApi:true}));
+  document.getElementById("add-btn")?.addEventListener("click",()=>{ imgPreview=""; setState({showAdd:true}); });
+  document.getElementById("excel-btn")?.addEventListener("click",()=>setState({showExcel:true,copied:false}));
+
+  // card delete
+  document.querySelectorAll(".card-del").forEach(btn=>{
+    btn.addEventListener("click",()=>setState({confirmId:btn.dataset.id}));
+  });
+
+  // add modal
+  bindAddModal();
+
+  // api modal
+  document.getElementById("api-cancel")?.addEventListener("click",()=>setState({showApi:false}));
+  document.getElementById("api-save")?.addEventListener("click",()=>{
+    const k = document.getElementById("api-input").value.trim();
+    saveApiKey(k); setState({apiKey:k,showApi:false});
+  });
+
+  // excel modal
+  document.getElementById("excel-close")?.addEventListener("click",()=>setState({showExcel:false}));
+  document.getElementById("excel-copy")?.addEventListener("click",()=>{
+    const ta = document.getElementById("excel-ta");
+    ta.select();
+    navigator.clipboard?.writeText(ta.value).catch(()=>document.execCommand("copy"));
+    setState({copied:true});
+  });
+
+  // confirm
+  document.getElementById("conf-cancel")?.addEventListener("click",()=>setState({confirmId:null}));
+  document.getElementById("conf-ok")?.addEventListener("click",()=>{
+    const next = state.contents.filter(c=>String(c.id)!==String(state.confirmId));
+    saveContents(next); setState({contents:next,confirmId:null});
+  });
+}
+
+function bindAddModal(){
+  const drop = document.getElementById("drop-area");
+  if(!drop) return;
+
+  const setPreview = (src)=>{
+    imgPreview = src;
+    const inner = document.getElementById("drop-inner");
+    if(inner) inner.innerHTML = `<img src="${src}" style="max-height:120px;max-width:100%;border-radius:8px;object-fit:contain" onerror="this.parentElement.innerHTML='<span>画像を読み込めません</span>'">`;
+  };
+
+  drop.addEventListener("click",()=>drop.focus());
+  drop.addEventListener("paste",e=>{
+    e.preventDefault();
+    const items = e.clipboardData.items;
+    for(let i=0;i<items.length;i++){
+      if(items[i].type.startsWith("image/")){
+        const rd = new FileReader();
+        rd.onload = ev=>{ setPreview(ev.target.result); document.getElementById("img-url-input").value=""; };
+        rd.readAsDataURL(items[i].getAsFile());
+        return;
+      }
+    }
+    const text = e.clipboardData.getData("text");
+    if(text && /^https?:\/\//i.test(text)){
+      setPreview(text);
+      document.getElementById("img-url-input").value = text;
+    }
+  });
+  drop.addEventListener("dragover",e=>{ e.preventDefault(); drop.classList.add("drag"); });
+  drop.addEventListener("dragleave",()=>drop.classList.remove("drag"));
+  drop.addEventListener("drop",e=>{
+    e.preventDefault(); drop.classList.remove("drag");
+    const file = e.dataTransfer.files[0];
+    if(file && file.type.startsWith("image/")){
+      const rd = new FileReader();
+      rd.onload = ev=>{ setPreview(ev.target.result); document.getElementById("img-url-input").value=""; };
+      rd.readAsDataURL(file); return;
+    }
+    const html = e.dataTransfer.getData("text/html");
+    const uri = e.dataTransfer.getData("text/uri-list");
+    const src = (uri&&/^https?:\/\//i.test(uri.trim()))?uri.trim():(html?(html.match(/src="([^"]+)")||[])[1]:null);
+    if(src){ setPreview(src); document.getElementById("img-url-input").value=src; }
+  });
+
+  document.getElementById("img-url-input").addEventListener("input",e=>{
+    const v = e.target.value;
+    if(/^https?:\/\//i.test(v)) setPreview(v);
+  });
+
+  document.getElementById("content-url").addEventListener("input",e=>{
+    const v = e.target.value;
+    const prev = document.getElementById("url-preview");
+    const prevText = document.getElementById("url-preview-text");
+    if(v){ prev.style.display="block"; prevText.textContent=transformUrl(v); }
+    else prev.style.display="none";
+  });
+
+  document.getElementById("add-cancel").addEventListener("click",()=>setState({showAdd:false}));
+  document.getElementById("add-submit").addEventListener("click",async()=>{
+    const name = document.getElementById("content-name").value.trim();
+    const title = document.getElementById("content-title").value.trim();
+    const url = document.getElementById("content-url").value.trim();
+    const imgUrl = document.getElementById("img-url-input").value.trim();
+    const errEl = document.getElementById("upload-err");
+    const submitBtn = document.getElementById("add-submit");
+    const uploadingEl = document.getElementById("uploading");
+
+    if(!imgPreview||!name||!title){ errEl.textContent="画像・コンテンツ名・タイトルは必須です"; errEl.style.display="block"; return; }
+    if(!state.apiKey){ errEl.textContent="APIキーが未設定です。右上の⚙️から設定してください。"; errEl.style.display="block"; return; }
+
+    errEl.style.display="none";
+    submitBtn.disabled=true; uploadingEl.style.display="block";
+
+    try{
+      const isUrl = !imgPreview.startsWith("data:");
+      const hostedUrl = await uploadToCloudinary(state.apiKey, imgPreview, isUrl);
+      const item = {
+        id: Date.now(),
+        img: hostedUrl,
+        imgUrl: hostedUrl,
+        contentName: name,
+        title,
+        url: transformUrl(url),
+        createdAt: new Date().toLocaleString("ja-JP")
+      };
+      const next = [item, ...state.contents];
+      saveContents(next);
+      setState({contents:next, showAdd:false});
+    }catch(err){
+      errEl.textContent = "アップロード失敗: "+err.message;
+      errEl.style.display="block";
+      submitBtn.disabled=false; uploadingEl.style.display="none";
+    }
+  });
+}
+
+render();
+</script>
+</body>
+</html>
